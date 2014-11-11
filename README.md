@@ -7,7 +7,7 @@ We'll be using Ruby 2.1.4 along with bundler, though any version >= 2.0.0 should
 <h3>Sections</h3>
 <a href="#bundler-bootstrap">Getting Started with Bundler</a><br>
 <a href="#rspec-setup">RSpec setup</a><br>
-<a href="#writing-tests">The Tests</a><br>r
+<a href="#writing-tests">The Tests</a><br>
 
 --
 
@@ -153,9 +153,9 @@ end
 There are three important things to note here:
 
 #### 1 - Namespacing
-Because we're creating a gem, all code that we write will be namespaced under the GameOfLife module. This prevents conflicts if other libraries want to use the 
+Because we're creating a gem, all code that we write will be namespaced under the GameOfLife module. This prevents conflicts between libraries and 
 
-In order to call code from our gem, we'll prepend GameOfLife:: to any methods we call.
+In order to call code from our gem, we'll prepend GameOfLife:: to any class methods we call in our tests.
 
 #### 2 - Syntax for setting pending tests
 The line ```skip("Not yet implemented")``` allows us to build tests that we plan on implementing later. For now, we know that we want to test that grid.draw draws the grid, but we've got some work to do before we can get there... so we create a pending test, with the intention of coming back to it later.
