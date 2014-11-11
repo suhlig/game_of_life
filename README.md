@@ -7,8 +7,7 @@ We'll be using Ruby 2.1.4 along with bundler, though any version >= 2.0.0 should
 <h3>Sections</h3>
 <a href="#bundler-bootstrap">Getting Started with Bundler</a><br>
 <a href="#rspec-setup">RSpec setup</a><br>
-<a href="#writing-tests">The Tests</a><br>
-<a href="#time-to-code">The Code (and more tests)</a>
+<a href="#writing-tests">The Tests</a><br>r
 
 --
 
@@ -119,7 +118,7 @@ require "game_of_life"
 ...
 ```
 
-Voila! You're setup and are ready to start righting tests. To verify, you can run tests via ```rspec spec```.
+Voila! You're setup and are ready to start writing tests. To verify, you can run tests via ```rspec spec```.
 
 ```
 $ rspec spec/
