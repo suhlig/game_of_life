@@ -36,12 +36,23 @@ module GameOfLife
       end
 
       describe "#initialize" do
-        it "should have a first position of 0,0" do
+        it "should create a cell with a position of 0,0" do
           expect(@grid.cells.first.position).to eq @coord1
         end
 
-        it "should have a second position of 1,1" do
+        it "should create a cell with a position of 1,1" do
           expect(@grid.cells[1].position).to eq @coord2
+        end
+      end
+
+      describe "#find_living_coordinates" do
+        it "should find living coordinates" do
+          expect(@grid.find_living_coordinates).to eq [@coord1, @coord2]
+        end
+
+        it "should not find dead coordinates" do
+          @grid.cells[1].state = :dead
+          expect(@grid.find_living_coordinates).to eq [@coord1]
         end
       end
     end

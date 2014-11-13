@@ -14,6 +14,21 @@ module GameOfLife
     it "should be alive as a default" do
       expect(@cell.state).to eq :live
     end
+
+    it "should respond as alive when it is alive" do
+      expect(@cell.alive?).to be true
+    end
+
+    describe "#neighbor_coordinates" do
+
+      it "should calculate the coordinates of its 8 neighbors properly" do
+        neighbors = [[0,0], [0,1], [0,2],
+                     [1,0], [1,2],
+                     [2,0], [2,1], [2,2]]
+        expect(@cell.neighbor_coordinates).to eq neighbors
+      end
+
+    end
+
   end
 end
-

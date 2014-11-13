@@ -168,7 +168,7 @@ In this case, we're describing what the "draw" method will do on a specific grid
 ### Running our Tests
 
 If we try to run our pending tests using `rspec spec`, they will fail with the following error:
-```uninitialized constant GameOfLife::Grid (NameError)``` because our application doesn't have a Grid class yet. So let's create one.
+`uninitialized constant GameOfLife::Grid (NameError)` because our application doesn't have a Grid class yet. So let's create one.
 
 --
 
@@ -218,7 +218,9 @@ module GameOfLife
       end
 
       describe "#initialize" do
-        expect(@grid.cells.first.position).to eq [0,0]
+      	it "should create a cell with a position of 0,0"
+	      expect(@grid.cells.first.position).to eq [0,0]
+	    end
       end
     end
 
@@ -334,11 +336,11 @@ context "Grid is initialized with two cells" do
   end
 
   describe "#initialize" do
-    it "should have a first position of 0,0" do
+    it "should create a cell with a position of 0,0" do
       expect(@grid.cells.first.position).to eq @coord1
     end
 
-    it "should have a second position of 1,1" do
+    it "should create a cell with a position of 1,1" do
       expect(@grid.cells[1].position).to eq @coord2
     end
   end
@@ -449,7 +451,7 @@ module GameOfLife
       end
 
       describe "#initialize" do
-        it "should have a position of 0, 0" do
+        it "should create a cell with a position of 0, 0" do
           expect(@grid.cells.first.position).to eq [0,0]
         end
       end
@@ -463,11 +465,11 @@ module GameOfLife
       end
 
       describe "#initialize" do
-        it "should have a first position of 0,0" do
+        it "should create a cell with a position of 0,0" do
           expect(@grid.cells.first.position).to eq @coord1
         end
 
-        it "should have a second position of 1,1" do
+        it "should create a cell with a position of 1,1" do
           expect(@grid.cells[1].position).to eq @coord2
         end
       end
@@ -583,7 +585,7 @@ module GameOfLife
       end
 
       describe "#initialize" do
-        it "should have a position of 0, 0" do
+        it "should create a cell with a position of 0, 0" do
           expect(@grid.cells.first.position).to eq [0,0]
         end
       end
@@ -597,11 +599,11 @@ module GameOfLife
       end
 
       describe "#initialize" do
-        it "should have a first position of 0,0" do
+        it "should create a cell with a position of 0,0" do
           expect(@grid.cells.first.position).to eq @coord1
         end
 
-        it "should have a second position of 1,1" do
+        it "should create a cell with a position of 1,1" do
           expect(@grid.cells[1].position).to eq @coord2
         end
       end
@@ -638,13 +640,198 @@ We're about to start on the main logic of the game, so taking a quick step back 
 3. Any live cell with more than three live neighbours dies, as if by overcrowding.
 4. Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
 
-Our goal is not only to build a game that works within the constraints of these rules, but to try to build a well-designed version of the game that is efficient at computing the next grid state.
+We're going to start with a simple implementation of these rules, and refactor to improve efficiency later. To begin, here are the steps our program will be walking through:
 
-...
+1. The grid finds all live coordinates.
+2. The grid adds 1 point to the score of each of the coordinates surrounding a live coordinate.
+3. The grid creates a new living cell for all new living cells, and kills all cells which should be killed.
+
+#### The Grid Finds all Live Coordinates
+
+We'll start with tests for the first part: the grid should be able to locate any live coordinates. We'll be adding one method to our Cell class as well as one method to our Grid class to accomplish this.
+
+First, let's add the following test to `cell_spec.rb`:
+```
+it "should respond as alive when it is alive" do
+  expect(@cell.alive?).to be true
+end
+```
+
+And the following code to `game_of_life.rb` to have the test pass:
+```
+def alive?
+  @state == :live
+end
+```
+
+Finally, let's add a few tests to `grid_spec.rb` and build the `#find_living_coordinates` method.
+
+```
+describe "#find_living_coordinates" do
+  it "should find living coordinates" do
+    expect(@grid.find_living_coordinates).to eq [@coord1, @coord2]
+  end
+
+  it "should not find dead coordinates" do
+    @grid.cells[1].state = :dead
+    expect(@grid.find_living_coordinates).to eq [@coord1]
+  end
+end
+```
+
+The `#find_living_coordinates` method takes the grid's collection of cells, selects only the ones that still have a state of `:live`, and maps them to their position. We'll use this method later to locate live cells, then check and change state of other cells neighboring them... which brings us to our next set of methods: finding your nearest neighbors.
+
+## A Quick Organizational Refactor
+
+We're about to start adding more methods to both the cell and grid classes to perform some more complex logic. Rather than continue to pile new methods into both of the classes, let's extract those classes into their own files to keep things better organized. Both of these files will be kept in the `lib/game_of_life` directory. We will require them using [require_relative](https://practicingruby.com/articles/ways-to-load-code), which requires the files relative to the current directory. Here's our updated file setup:
+
+```
+# lib/game_of_life.rb
+require_relative "game_of_life/version"
+require_relative "game_of_life/grid"
+require_relative "game_of_life/cell"
+
+module GameOfLife
+end
+```
+
+```
+# lib/game_of_life/cell.rb
+module GameOfLife
+
+  class Cell
+    attr_accessor :position, :state
+
+    def initialize(coordinates)
+      @position = coordinates
+      @state = :live
+    end
+
+    def alive?
+      @state == :live
+    end
+
+  end
+
+end
+```
+
+```
+module GameOfLife
+
+class Grid
+    attr_accessor :cells
+
+    def initialize(pattern: nil, coordinates: nil)
+      if pattern
+        @cells = build_cells_from_pattern(pattern)
+      elsif coordinates.any?
+        @cells = build_cells_from_coordinates(coordinates)
+      end
+    end
+
+    def build_cells_from_coordinates(arr)
+      arr = [arr] unless arr.first.is_a?(Array)
+      arr.map { |coords| Cell.new(coords) }
+    end
+
+    def build_cells_from_pattern(pattern)
+      coordinates = []
+      pattern.lines.each.with_index(0) do |line, line_index|
+        line.each_char.with_index(0) do |char, char_index|
+          if char == 'X'
+            x_pos = char_index
+            y_pos = line_index
+            coordinates.push([x_pos, y_pos])
+          end
+        end
+      end
+      build_cells_from_coordinates(coordinates)
+    end
+
+    def find_living_coordinates
+      cells.find_all { |cell| cell.alive? }.map(&:position)
+    end
+  end
+
+end
+```
 
 ## Knowing Your Neighbors
 
-WIP.
+If you think of the grid as a set of coordinates, your neighbors can be found based on applying an offset of [-1, 0, 1] to both the X and Y coordinates. For example, a coordinate of [4, 4] would have neighbors of: [3, 3], [3, 4], [3, 5], [4, 3], [4, 5], [5, 3], [5, 4], [5, 5].
+
+We'll be storing these coordinates for each cell when a new cell is created, so the neighbors of a cell can easily accessed rather than computed each time. Here's the test we'll be using for that:
+
+```
+describe "#neighbor_coordinates" do
+
+  it "should calculate the coordinates of its 8 neighbors properly" do
+    neighbors = [[0,0], [0,1], [0,2],
+                 [1,0], [1,2],
+                 [2,0], [2,1], [2,2]]
+    expect(@cell.neihbor_coordinates).to eq neighbors
+  end
+
+end
+```
+
+To calculate this when we create a new cell, we'll need to take the 8 offsets and add each of them to the cell's coordinates. Let's break this down into a few methods. The first method we'll be creating is a [private method](http://stackoverflow.com/questions/4293215/understanding-private-methods-in-ruby) called offset which will generate the 8 offsets. It's using ruby's product method to cross-multiply the arrays [-1, 0, 1], then remove the [0,0] pair using delete_if.
+
+```
+private
+
+def offset
+  offset_range = (-1..1).to_a
+  offset_range.product(offset_range).delete_if { |pair| pair == [0,0] }
+end
+```
+
+We'll use ruby's Enumerable#reduce (also known as [Enumerable#inject](http://blog.jayfields.com/2008/03/ruby-inject.html)) to add each of the offsets to the cell's position.
+
+```
+def calculate_neighbor_coordinates
+  offset.reduce([]) do |new_arr, coord|
+    new_arr << [coord[0] + @position[0], coord[1] + @position[1]]
+  end
+end
+```
+
+Putting it all together, we'll have this:
+
+```
+module GameOfLife
+
+  class Cell
+    attr_accessor :position, :state, :neighbor_coordinates
+
+    def initialize(coordinates)
+      @position = coordinates
+      @state = :live
+      @neighbor_coordinates = calculate_neighbor_coordinates
+    end
+
+    def alive?
+      @state == :live
+    end
+
+    def calculate_neighbor_coordinates
+      offset.reduce([]) do |new_arr, coord|
+        new_arr << [coord[0] + @position[0], coord[1] + @position[1]]
+      end
+    end
+
+    private
+
+    def offset
+      offset_range = (-1..1).to_a
+      offset_range.product(offset_range).delete_if { |pair| pair == [0,0] }
+    end
+
+  end
+
+end
+```
 
 ## Finding Cells that Need to be Changed
 
