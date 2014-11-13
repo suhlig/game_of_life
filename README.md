@@ -347,7 +347,7 @@ context "Grid is initialized with two cells" do
 end
 ```
 
-When you run `rspec spec`, you should have 3 passing tests and 1 pending test -- a working grid of cells!
+When you run `rspec spec`, you should have 3 passing tests -- a working grid of cells!
 
 ### Our first Refactor: Using Patterns to Create Grids
 
