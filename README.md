@@ -8,6 +8,7 @@ We'll be using Ruby 2.1.4 along with bundler, though any version >= 2.0.0 should
 <a href="#bundler-bootstrap">Getting Started with Bundler</a><br>
 <a href="#rspec-setup">RSpec setup</a><br>
 <a href="#writing-tests">The Tests</a><br>
+<a href="#time-to-code">The Code</a><br>
 
 --
 
@@ -322,3 +323,215 @@ end
 ```
 
 When you run `rspec spec`, you should have 3 passing tests and 1 pending test -- a working grid of cells!
+
+### Easier Grid Creation: Using Patterns
+
+Our next goal is going to be to make grid creation easier. Right now, we're sending an array of coordinates as a **message** to the initialize method for the Grid. For us to play around with the grid later, it'll be much easier for us to be able to "draw" a pattern and then pass that. So we're going to refactor our Grid#initialize method to be able to handle patterns. We'll be using the "-" character to note dead cells and "X" to note live cells, so we can write code like this:
+
+```
+pattern = %q(----X----
+			 ----X----
+			 ----X----
+			 ---------
+			 XXX---XXX
+			 ---------
+			 ----X----
+			 ----X----
+			 ----X----).gsub(/[^\S\n]/m, '')
+
+grid = Grid.new(pattern: pattern)
+grid.cells.count # => 12
+```
+
+A few quick things to note -- above, we're using %q to create a multiline string, and gsub to remove all non-newline whitespace from it. This is functionally the same as doing this:
+
+```
+pattern = "----X----\n----X----\n----X----\n---------\nXXX---XXX\n---------\n----X----\n----X----\n----X----"
+```
+
+...but has the added benefit of being more readable. We're using that specific pattern because it alternates between two shapes, so we can visually inspect how our grid is working later. [You can take a look at the alternation by creating the pattern here](http://projects.abelson.info/life/).
+
+Let's start by writing our first failing test, using the pattern from above. We'll add a new context to our grid_spec, with a simple test to count the number of cells. 
+
+```
+context "Grid can be initialized using a pattern" do
+  before(:each) do
+    pattern = %q(----X----
+                 ----X----
+                 ----X----
+                 ---------
+                 XXX---XXX
+                 ---------
+                 ----X----
+                 ----X----
+                 ----X----).gsub(/\s+/m, '')
+   @grid = GameOfLife::Grid.new(pattern: pattern)
+  end
+
+  it "should have 12 cells" do
+    expect(@grid.cells.count).to eq 12
+  end
+  
+  it "should have a position of [4,0] for the first cell" do
+    expect(@grid.cells.first.position).to eq [4,0]
+  end
+end
+```
+
+Currently, our grid takes one argument, which is automatically converted to an array. In order to move forward, we'll need to modify it so that it can take two arguments -- either a string (the pattern) or an array (the coordinates) -- and work with either of them.
+
+### Using Keyword Arguments in our Grid Class
+
+We'll be using [keyword arguments](http://robots.thoughtbot.com/ruby-2-keyword-arguments) to build our grid to accept either of these types of input. A Grid will have an array of cells. We'll break the logic for how the cells are created out into two separate methods, `grid#build_cells_from_coordinates` and `grid#build_cells_from_pattern`. Here's what our #initialize code will look like to enable this:
+
+```
+def initialize(pattern: nil, coordinates: nil)
+  if pattern
+    @cells = build_cells_from_pattern(pattern)
+  elsif coordinates.any?
+    @cells = build_cells_from_coordinates(coordinates)
+  end
+end
+```
+
+This sets the default value of both pattern and coordinates to nil, and only creates cells if a pattern or coordinates are provided. If **both** a pattern and coordinates are provided, it will create cells based on the pattern. We'll come back to writing a test for this specific edge case once we have our previous tests passing. But first, we need to build the missing methods to process the input and create cells from it.
+
+We already have the bulk of the code necessary for creating cells from coordinates (the Enumerable#map method we used earlier). We're going to make a small change to it, in order for us to support being passed either any number of coordinates.
+
+```
+def build_cells_from_coordinates(arr)
+  arr = [arr] unless arr.first.is_a?(Array)
+  arr.map { |coords| Cell.new(coords) }
+end
+```
+
+The first line in this method ensures that we have an array of arrays. For example, if we pass the coordinates [0,0] into this method, the first line will turn that into [[0,0]]. Keeping our input normalized in this format allows us to map the array and return an array of cells, regardless of how whether it receives one or many coordinates.
+
+At this point, we'll need to do some small refactoring to our tests to get them working again, because we've changed what grid#initialize is expecting. You'll need to find all instances of GameOfLife::Grid.new(), and ensure that you're passing coordinates and patterns as separate arguments. Here's what the new tests look like:
+
+```
+require 'spec_helper'
+
+module GameOfLife
+  describe Grid do
+
+    context "Grid is initialized with a single cell" do
+      before(:each) do
+        live_coordinates = [0, 0]
+        @grid = GameOfLife::Grid.new(coordinates: live_coordinates)
+      end
+
+      describe "#initialize" do
+        it "should have a position of 0, 0" do
+          expect(@grid.cells.first.position).to eq [0,0]
+        end
+      end
+    end
+
+    context "Grid is initialized with two cells" do
+      before(:each) do
+        @coord1 = [0,0]
+        @coord2 = [1,1]
+        @grid = GameOfLife::Grid.new(coordinates: [@coord1, @coord2])
+      end
+
+      describe "#initialize" do
+        it "should have a first position of 0,0" do
+          expect(@grid.cells.first.position).to eq @coord1
+        end
+
+        it "should have a second position of 1,1" do
+          expect(@grid.cells[1].position).to eq @coord2
+        end
+      end
+    end
+
+    context "Grid can be initialized using a pattern" do
+      before(:each) do
+        pattern = %q(----X----
+                     ----X----
+                     ----X----
+                     ---------
+                     XXX---XXX
+                     ---------
+                     ----X----
+                     ----X----
+                     ----X----).gsub(/\s+/m, '')
+       @grid = GameOfLife::Grid.new(pattern: pattern)
+      end
+
+      it "should have 12 cells" do
+        expect(@grid.cells.count).to eq 12
+      end
+
+      it "should have a position of [5, 0] for the first cell" do
+        expect(@grid.cells.first.position).to eq [5, 0]
+      end
+    end
+
+    describe "#draw" do
+      it "draws the grid" do
+        skip("Not yet implemented")
+      end
+    end
+  end
+end
+```
+
+At this point, you should have **2** failing tests:
+```
+Failures:
+
+  1) GameOfLife::Grid Grid can be initialized using a pattern should have 12 cells
+     Failure/Error: @grid = GameOfLife::Grid.new(pattern: pattern)
+     NoMethodError:
+       undefined method `build_cells_from_pattern' for #<GameOfLife::Grid:0x007fb5a1b2bac0>
+     # ./lib/game_of_life.rb:11:in `initialize'
+     # ./spec/grid_spec.rb:48:in `new'
+     # ./spec/grid_spec.rb:48:in `block (3 levels) in <module:GameOfLife>'
+
+  2) GameOfLife::Grid Grid can be initialized using a pattern should have a position of [5, 0] for the first cell
+     Failure/Error: @grid = GameOfLife::Grid.new(pattern: pattern)
+     NoMethodError:
+       undefined method `build_cells_from_pattern' for #<GameOfLife::Grid:0x007fb5a1b29fe0>
+     # ./lib/game_of_life.rb:11:in `initialize'
+     # ./spec/grid_spec.rb:48:in `new'
+     # ./spec/grid_spec.rb:48:in `block (3 levels) in <module:GameOfLife>'
+```
+
+Let's build our method to build cells from a pattern and take care of those errors.
+
+#### Building Coordinates from Patterns
+
+From a 10,000ft level, our goal with this method is to take a string and convert it into a series of coordinates. There are a few things that our method will do to accomplish this:
+
+**1** - For every line in the pattern, find the X's in that line.<br>
+**2** - When you find an X, add a coordinate to an coordinates array that corresponds to the line number you're on (the Y coordinate) and the character that the X was on (the X coordinate).<br>
+**3** - Convert each of those coordinates to a cell.
+
+We've already written a method that converts coordinates to cells, so we just need to sort through the lines in the patterns and build corresponding coordinates. There are multiple ways you could accomplish this, but we'll be relying heavily on built in methods in ruby's Enumerable and String classes. Here's what the final method looks like.
+
+```
+def build_cells_from_pattern(pattern)
+  coordinates = []
+  pattern.lines.each.with_index(0) do |line, line_index|
+    line.each_char.with_index(0) do |char, char_index|
+      if char == 'X'
+        x_pos = char_index
+        y_pos = line_index
+        coordinates.push([x_pos, y_pos])
+      end
+    end
+  end
+  build_cells_from_coordinates(coordinates)
+end
+```
+
+Let's go through it line by line. `coordinates = []` creates an empty array for us to store our coordinates in. The [`lines`](http://www.ruby-doc.org/core-2.1.4/String.html#method-i-lines) method allows us to take our pattern, and for every line in that pattern, evaluate the line, while keeping track of the current index (our Y position) of the line.
+
+From there, the [each-char](http://www.ruby-doc.org/core-2.1.4/String.html#method-i-each_char) method lets us evaluate each character in the line, keeping track of the index (our X position) of the character. When we find a character that matches our "live" input, we create the coordinates, and push them to our array.
+
+Finally, we use our previously built build_cells_from_coordinates method to create and return an array of cells from our current coordinates. Run your rspec tests again, and you should have 6 passing tests.
+
+#### Drawing Your Grid
+
