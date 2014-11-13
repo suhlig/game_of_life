@@ -249,14 +249,17 @@ We're starting with a fairly complex test to make pass. In order for it to pass,
 <br>**2** - For each coordinate pair passed to the grid, a new cell is created.
 <br>**3** - Each cell needs to respond to the method position, and return an array of its x, y coordinates.
 
-Let's start with #1, which is our simplest step. In order to allow the user to pass **either** an array or multiple arrays to the grid, we'll set up an initialize method that uses [ruby's splat operator](http://endofline.wordpress.com/2011/01/21/the-strange-ruby-splat/) to create an array from the arguments passed to it.
+Let's start with #1, which is our simplest step. In order to allow the user to pass **either** an array or multiple arrays to the grid, we'll set up an initialize method that takes an array.
 
 ```
 class Grid
-  def initialize(*arr)
+  def initialize(arr)
+    arr = [arr] unless arr.first.is_a?(Array)
   end
 end
 ```
+
+The first line in this method ensures that we have an array of arrays. For example, if we pass the coordinates [0,0] into this method, the first line will turn that into [[0,0]]. Keeping our input normalized in this format allows us to map the array and return an array of cells, regardless of how whether it receives one or many coordinates.
 
 In order for a grid to create and associate itself with cells, we'll need to have a Cell class as well. Each cell will accept its coordinates as arguments, and will have a default state of "live" on creation. Let's create a quick set of tests in a new spec file, `cell_spec.rb`, to test our Cell.
 
@@ -285,7 +288,8 @@ Running our Cell tests in `rspec spec/cell_spec.rb` should now result in a NameE
 
 ```
 class Grid
-  def initialize(*arr)
+  def initialize(arr)
+    arr = [arr] unless arr.first.is_a?(Array)
   end
 end
 
@@ -308,7 +312,8 @@ module GameOfLife
 
   class Grid
     attr_accessor :cells
-    def initialize(*arr)
+    def initialize(arr)
+      arr = [arr] unless arr.first.is_a?(Array)
       @cells = arr.map { |coords| Cell.new(coords) }
     end
   end
@@ -425,7 +430,7 @@ end
 
 This sets the default value of both pattern and coordinates to nil, and only creates cells if a pattern or coordinates are provided. If **both** a pattern and coordinates are provided, it will create cells based on the pattern. We'll come back to writing a test for this specific edge case once we have our previous tests passing. But first, we need to build the missing methods to process the input and create cells from it.
 
-We already have the bulk of the code necessary for creating cells from coordinates (the Enumerable#map method we used earlier). We're going to make a small change to it, in order for us to support being passed either any number of coordinates.
+We already have the bulk of the code necessary for creating cells from coordinates (the Enumerable#map method we used earlier).
 
 ```
 def build_cells_from_coordinates(arr)
@@ -433,8 +438,6 @@ def build_cells_from_coordinates(arr)
   arr.map { |coords| Cell.new(coords) }
 end
 ```
-
-The first line in this method ensures that we have an array of arrays. For example, if we pass the coordinates [0,0] into this method, the first line will turn that into [[0,0]]. Keeping our input normalized in this format allows us to map the array and return an array of cells, regardless of how whether it receives one or many coordinates.
 
 At this point, we'll need to do some small refactoring to our tests to get them working again, because we've changed what grid#initialize is expecting. You'll need to find all instances of GameOfLife::Grid.new(), and ensure that you're passing coordinates and patterns as separate arguments. Here's what the new tests look like:
 
@@ -757,7 +760,9 @@ class Grid
 end
 ```
 
-## Knowing Your Neighbors
+## Keeping Track of Cells: Knowing Your Neighbors
+
+Once we have a list of living coordinates, we can start moving on to keeping track of which cells need to be updated. To do this, we first need to find the neighbors of the current cell.
 
 If you think of the grid as a set of coordinates, your neighbors can be found based on applying an offset of [-1, 0, 1] to both the X and Y coordinates. For example, a coordinate of [4, 4] would have neighbors of: [3, 3], [3, 4], [3, 5], [4, 3], [4, 5], [5, 3], [5, 4], [5, 5].
 
