@@ -3,6 +3,18 @@ require 'spec_helper'
 module GameOfLife
   describe Grid do
 
+    before(:all) do
+      @cross_pattern = %q(----X----
+                          ----X----
+                          ----X----
+                          ---------
+                          XXX---XXX
+                          ---------
+                          ----X----
+                          ----X----
+                          ----X----).gsub(/[^\S\n]/m, '')
+    end
+
     context "Grid is initialized with a single cell" do
       before(:each) do
         live_coordinates = [0, 0]
@@ -36,16 +48,7 @@ module GameOfLife
 
     context "Grid can be initialized using a pattern" do
       before(:each) do
-        pattern = %q(----X----
-                     ----X----
-                     ----X----
-                     ---------
-                     XXX---XXX
-                     ---------
-                     ----X----
-                     ----X----
-                     ----X----).gsub(/[^\S\n]/m, '')
-       @grid = GameOfLife::Grid.new(pattern: pattern)
+        @grid = GameOfLife::Grid.new(pattern: @cross_pattern)
       end
 
       it "should have 12 cells" do
@@ -57,10 +60,5 @@ module GameOfLife
       end
     end
 
-    describe "#draw" do
-      it "draws the grid" do
-        skip("Not yet implemented")
-      end
-    end
   end
 end

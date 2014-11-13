@@ -231,7 +231,7 @@ We're using the context block to separate tests logically into different context
 
 Run your test suite, and you should see an error message: 
 ```
-Failure/Error: @grid = GameOfLife::Grid.nfdew(live_coordinates)
+Failure/Error: @grid = GameOfLife::Grid.new(live_coordinates)
      ArgumentError:
        wrong number of arguments (1 for 0)
      # ./spec/grid_spec.rb:9:in `initialize'
@@ -247,7 +247,7 @@ We're starting with a fairly complex test to make pass. In order for it to pass,
 <br>**2** - For each coordinate pair passed to the grid, a new cell is created.
 <br>**3** - Each cell needs to respond to the method position, and return an array of its x, y coordinates.
 
-Let's start with #1, which is our simplest step. In order to allow the user to pass **either** an array or multiple arrays to the grid, we'll set up an initialize method that uses [Ruby's splat operator](http://endofline.wordpress.com/2011/01/21/the-strange-ruby-splat/) to create an array from the arguments passed to it.
+Let's start with #1, which is our simplest step. In order to allow the user to pass **either** an array or multiple arrays to the grid, we'll set up an initialize method that uses [ruby's splat operator](http://endofline.wordpress.com/2011/01/21/the-strange-ruby-splat/) to create an array from the arguments passed to it.
 
 ```
 class Grid
@@ -256,9 +256,37 @@ class Grid
 end
 ```
 
-In order for a grid to create and associate itself with cells, we'll need to have a Cell class as well. Each cell will accept its coordinates as arguments, and will have a default state of "live" on creation.
+In order for a grid to create and associate itself with cells, we'll need to have a Cell class as well. Each cell will accept its coordinates as arguments, and will have a default state of "live" on creation. Let's create a quick set of tests in a new spec file, `cell_spec.rb`, to test our Cell.
 
 ```
+require 'spec_helper'
+
+module GameOfLife
+  describe Cell do
+
+    before(:each) do
+      @cell = Cell.new([1,1])
+    end
+
+    it "should respond with a position of 1,1" do
+      expect(@cell.position).to eq [1,1]
+    end
+
+    it "should be alive as a default" do
+      expect(@cell.state).to eq :live
+    end
+  end
+end
+```
+
+Running our Cell tests in `rspec spec/cell_spec.rb` should now result in a NameError. Just like we had to do with Grid earlier, we'll need to create a Cell class. For now, let's just add it to the bottom of `game_of_life.rb`, below the Grid class.
+
+```
+class Grid
+  def initialize(*arr)
+  end
+end
+
 class Cell
   attr_accessor :position, :state
 
@@ -527,7 +555,100 @@ From there, the [each-char](http://www.ruby-doc.org/core-2.1.4/String.html#metho
 
 Finally, we use our previously built build_cells_from_coordinates method to create and return an array of cells from our current coordinates. Run your rspec tests again, and you should have 6 passing tests.
 
-#### Knowing Your Neighbors
+#### DRYing up our tests
+In order to keep with the DRY (don't repeat yourself) ethos, we're going to make a few small changes to our tests. The pattern we've been using (of the cross) is something we are going to use frequently to initialize and test new grids. Rather than create the variable in multiple places, let's move it to the top of our test suite and ensure that it is created and saved as `@cross_pattern`, making it accessible to any future tests in grid_spec.rb.
+
+```
+require 'spec_helper'
+
+module GameOfLife
+  describe Grid do
+
+    before(:all) do
+      @cross_pattern = %q(----X----
+                          ----X----
+                          ----X----
+                          ---------
+                          XXX---XXX
+                          ---------
+                          ----X----
+                          ----X----
+                          ----X----).gsub(/[^\S\n]/m, '')
+    end
+
+    context "Grid is initialized with a single cell" do
+      before(:each) do
+        live_coordinates = [0, 0]
+        @grid = GameOfLife::Grid.new(coordinates: live_coordinates)
+      end
+
+      describe "#initialize" do
+        it "should have a position of 0, 0" do
+          expect(@grid.cells.first.position).to eq [0,0]
+        end
+      end
+    end
+
+    context "Grid is initialized with two cells" do
+      before(:each) do
+        @coord1 = [0,0]
+        @coord2 = [1,1]
+        @grid = GameOfLife::Grid.new(coordinates: [@coord1, @coord2])
+      end
+
+      describe "#initialize" do
+        it "should have a first position of 0,0" do
+          expect(@grid.cells.first.position).to eq @coord1
+        end
+
+        it "should have a second position of 1,1" do
+          expect(@grid.cells[1].position).to eq @coord2
+        end
+      end
+    end
+
+    context "Grid can be initialized using a pattern" do
+      before(:each) do
+        @grid = GameOfLife::Grid.new(pattern: @cross_pattern)
+      end
+
+      it "should have 12 cells" do
+        expect(@grid.cells.count).to eq 12
+      end
+
+      it "should have a position of [4, 0] for the first cell" do
+        expect(@grid.cells.first.position).to eq [4, 0]
+      end
+    end
+
+  end
+end
+```
+
+--
+
+## A Quick Revisit of the Rules
+
+We're about to start on the main logic of the game, so taking a quick step back to look at the rules and think about how **you** would implement it is a good idea.
+
+#### The Rules
+
+1. Any live cell with fewer than two live neighbours dies, as if caused by under-population.
+2. Any live cell with two or three live neighbours lives on to the next generation.
+3. Any live cell with more than three live neighbours dies, as if by overcrowding.
+4. Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+
+Our goal is not only to build a game that works within the constraints of these rules, but to try to build a well-designed version of the game that is efficient at computing the next grid state.
+
+...
+
+## Knowing Your Neighbors
+
+WIP.
+
+## Finding Cells that Need to be Changed
+
+WIP.
 
 ## Final Touches: Drawing the Grid
 
