@@ -2,7 +2,7 @@
 
 In this tutorial, we'll walk through a TDD-focused approach to building [Conway's Game of Life](http://en.wikipedia.org/wiki/Conway's_Game_of_Life) as a ruby gem. Unit tests and integration tests will be written in RSpec.
 
-We'll be using Ruby 2.1.4 along with bundler, though any version >= 2.0.0 should work for our purposes. If you don't have bundler installed, `gem install bundler` will do the trick.
+We'll be using Ruby 2.1.5 along with bundler, though any version >= 2.0.0 should work for our purposes. If you don't have bundler installed, `gem install bundler` will do the trick.
 
 <h3>Sections</h3>
 <a href="#bundler-bootstrap">Getting Started with Bundler</a><br>
@@ -80,14 +80,14 @@ end
 
 If you want to learn more about what each of these lines does and to learn more about building gems, I recommend [The Rubygems Guide to Making Your Own Gem](http://guides.rubygems.org/make-your-own-gem/) or for a very detailed read, [Brandon Hilkert's Learn to Build a Ruby Gem](http://brandonhilkert.com/books/build-a-ruby-gem/).
 
-For our purposes, what we care about are setting the author, email, summary, description. We also need to add RSpec as a dependency to our project.
+For our purposes, what we care about are setting the author, email, summary, description. We also need to add RSpec as a dependency to our project. This is done on the last line of our gemspec -- with the line`spec.add_development_dependency "rspec"`.
 
 --
 
 # <a name="rspec-setup""></a>Getting Started with RSpec
 
 
-#### Adding RSpec
+#### Installing the RSpec gem via Bundler
 
 After you've added rspec to your gemspec file, you can run `bundle install`. You should see something like this, letting you know that rspec is now bundled with your project.
 
@@ -119,7 +119,7 @@ require "game_of_life"
 ...
 ```
 
-Voila! You're setup and are ready to start writing tests. To verify, you can run tests via ```rspec spec```.
+Voila! You're setup and are ready to start writing tests. To verify, you can run tests via `rspec spec`.
 
 ```
 $ rspec spec/
@@ -142,8 +142,8 @@ require 'spec_helper'
 
 module GameOfLife
   describe Grid do
-    describe "#draw" do
-      it "draws the grid" do
+    describe "#initialize" do
+      it "creates a new grid" do
         skip("Not yet implemented")
       end
     end
@@ -197,7 +197,7 @@ Now, with our first non-failing test out of the way (just run `rspec spec` to ve
 
 ## Part Two: Real Code
 
-Now we're ready to start implementing actual code. We'll be breaking the Game of Life down into two separate classes - Grids and Cells. Cells will be responsible for knowing their coordinates and their state (alive or dead). Grids will be able to find the nearest neighbors of a cell given a position, to create a new grid with a new pattern, and to calculate the next state for a given cell given its neighbors. A grid will also be able to call ```grid#draw``` in order to display itself.
+Now we're ready to start implementing actual code. We'll be breaking the Game of Life down into two separate classes - Grids and Cells. Cells will be responsible for knowing their coordinates and their state (alive or dead). Grids will be able to find the nearest neighbors of a cell given a position, to create a new grid with a new pattern, and to calculate the next state for a given cell given its neighbors. Finally, a grid will also be able to call `grid#draw` in order to display itself.
 
 ### The Grid
 
@@ -222,11 +222,6 @@ module GameOfLife
       end
     end
 
-    describe "#draw" do
-      it "draws the grid" do
-        skip("Not yet implemented")
-      end
-    end
   end
 end
 
@@ -274,7 +269,7 @@ class Cell
 end
 ```
 
-The [`attr_accessor`](http://stackoverflow.com/questions/4370960/what-is-attr-accessor-in-ruby) method allows us to set and access the position of the cell by creating [setter and getter methods](http://rubymonk.com/learning/books/4-ruby-primer-ascent/chapters/45-more-classes/lessons/110-instance-variables). Now, we need to ensure that Grid will create a new Cell for each coordinate pair passed to it. For this, I'm using [ruby's Enumerable#map](http://ruby-doc.org/core-2.1.4/Enumerable.html#method-i-map), which takes the array of arrays and converts each one to a cell. Here's what it all looks like when it's all put together.
+The [`attr_accessor`](http://stackoverflow.com/questions/4370960/what-is-attr-accessor-in-ruby) method allows us to set and access the position of the cell by creating [setter and getter methods](http://rubymonk.com/learning/books/4-ruby-primer-ascent/chapters/45-more-classes/lessons/110-instance-variables). Now, we need to ensure that Grid will create a new Cell for each coordinate pair passed to it. For this, I'm using [ruby's Enumerable#map](http://ruby-doc.org/core-2.1.4/Enumerable.html#method-i-map), which allows you to take an enumerable object (in this case, an array) and run a block of code on each. We're using this to take an array of arrays and converts each **X,Y** pair to a cell. Here's what it all looks like when it's all put together.
 
 ```
 require "game_of_life/version"
@@ -324,9 +319,11 @@ end
 
 When you run `rspec spec`, you should have 3 passing tests and 1 pending test -- a working grid of cells!
 
-### Easier Grid Creation: Using Patterns
+### Our first Refactor: Using Patterns to Create Grids
 
-Our next goal is going to be to make grid creation easier. Right now, we're sending an array of coordinates as a **message** to the initialize method for the Grid. For us to play around with the grid later, it'll be much easier for us to be able to "draw" a pattern and then pass that. So we're going to refactor our Grid#initialize method to be able to handle patterns. We'll be using the "-" character to note dead cells and "X" to note live cells, so we can write code like this:
+Our next goal is going to be to make grid creation easier. Right now, we're sending an array of coordinates as a message to the initialize method for the Grid. For us to play around with the grid later, it'll be much easier for us to be able to "draw" a pattern and then pass that.
+
+To get to that point, we're going to refactor our Grid#initialize method to be able to handle patterns as well as coordinates. We'll be using the "-" character to note dead cells and "X" to note live cells, so we can write code like this:
 
 ```
 pattern = %q(----X----
@@ -390,6 +387,8 @@ def initialize(pattern: nil, coordinates: nil)
     @cells = build_cells_from_pattern(pattern)
   elsif coordinates.any?
     @cells = build_cells_from_coordinates(coordinates)
+  else
+    fail("A grid requires either a pattern or coordinates to be created.")
   end
 end
 ```
@@ -464,16 +463,11 @@ module GameOfLife
         expect(@grid.cells.count).to eq 12
       end
 
-      it "should have a position of [5, 0] for the first cell" do
-        expect(@grid.cells.first.position).to eq [5, 0]
+      it "should have a position of [4, 0] for the first cell" do
+        expect(@grid.cells.first.position).to eq [4, 0]
       end
     end
 
-    describe "#draw" do
-      it "draws the grid" do
-        skip("Not yet implemented")
-      end
-    end
   end
 end
 ```
@@ -533,5 +527,12 @@ From there, the [each-char](http://www.ruby-doc.org/core-2.1.4/String.html#metho
 
 Finally, we use our previously built build_cells_from_coordinates method to create and return an array of cells from our current coordinates. Run your rspec tests again, and you should have 6 passing tests.
 
-#### Drawing Your Grid
+#### Knowing Your Neighbors
+
+## Final Touches: Drawing the Grid
+
+To add a last bit of polish to our UI, we'll want to draw the grid.
+
+
+To do this, we'll start by using the coordinates from our previous pattern, and then define a grid#draw method which will print out a grid, appropriately 
 
