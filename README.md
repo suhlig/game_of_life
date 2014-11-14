@@ -667,22 +667,37 @@ def alive?
 end
 ```
 
-Finally, let's add a few tests to `grid_spec.rb` and build the `#find_living_coordinates` method.
+Finally, let's add a few tests to `grid_spec.rb` and build the `#live_cells` method.
 
 ```
-describe "#find_living_coordinates" do
-  it "should find living coordinates" do
-    expect(@grid.find_living_coordinates).to eq [@coord1, @coord2]
+describe "#live_cells" do
+
+  before(:each) do
+    @cell1 = @grid.cells.first
+    @cell2 = @grid.cells[1]
   end
 
-  it "should not find dead coordinates" do
-    @grid.cells[1].state = :dead
-    expect(@grid.find_living_coordinates).to eq [@coord1]
+  it "should find living cells" do
+    expect(@grid.live_cells).to eq [@cell1, @cell2]
   end
+
+  it "should not find dead cells" do
+    @cell2.state = :dead
+    expect(@grid.live_cells).to eq [@cell1]
+  end
+
 end
 ```
 
-The `#find_living_coordinates` method takes the grid's collection of cells, selects only the ones that still have a state of `:live`, and maps them to their position. We'll use this method later to locate live cells, then check and change state of other cells neighboring them... which brings us to our next set of methods: finding your nearest neighbors.
+We'll use `#live_cells` to filter our collection of cells down to what we really care about -- live cells (and eventually, their neighbors). Let's write a quick filter method using Enumerable#find_all to only return living cells.
+
+```
+def live_cells
+  @live_cells ||= cells.find_all { |cell| cell.alive? }
+end
+```
+
+Run your tests, and let's move on to the next section!
 
 ## A Quick Organizational Refactor
 
@@ -752,8 +767,8 @@ class Grid
       build_cells_from_coordinates(coordinates)
     end
 
-    def find_living_coordinates
-      cells.find_all { |cell| cell.alive? }.map(&:position)
+    def live_cells
+      @live_cells ||= cells.find_all { |cell| cell.alive? }
     end
   end
 
@@ -840,7 +855,91 @@ end
 
 ## Finding Cells that Need to be Changed
 
-WIP.
+In order for us to determine which cells need to be changed, we need to evaluate how many live cells a cell is next to. Let's create a `#live_cell_neighbors` method takes the grid's collection of cells, selects only the ones that still have a state of `:live`, and receives a collection of their neighbors. We'll use this count of neighbors later to establish which cells need to change their state.
+
+As always, we start with a test in `grid_spec.rb`. Let's start with two tests:
+
+```
+before(:each) do
+  @coord1 = [0,0]
+  @coord2 = [1,1]
+  @grid = GameOfLife::Grid.new(coordinates: [@coord1, @coord2])
+end
+
+...
+
+describe "#live_cell_neighbors" do
+  it "should find the neighbors of live cells when 1 cell is live" do
+    grid = Grid.new(coordinates: [1,1])
+    neighbors = [[0,0], [0,1], [0,2],
+                 [1,0], [1,2],
+                 [2,0], [2,1], [2,2]]
+    expect(grid.live_cell_neighbors).to eq neighbors
+  end
+
+  it "should find the neighbors of live cells when 2 cells are live" do
+    neighbors = [[-1,-1],[-1,0],[-1,1],
+                 [0,-1],[0,1],
+                 [1,-1],[1,0],[1,1],
+                 [0,0], [0,1], [0,2],
+                 [1,0], [1,2],
+                 [2,0], [2,1], [2,2]]
+      expect(@grid.live_cell_neighbors). to eq neighbors
+  end
+end
+```
+
+The code that accomplishes this is **much** shorter than the tests.
+
+```
+def live_cell_neighbors
+  @live_cell_neighbors ||= live_cells.map(&:neighbor_coordinates).flatten(1)
+end
+```
+
+Once again, we use ruby's Enumerable#map to get the array of neighboring coordinates. Because live_cells is an array, we're creating an multiple arrays within an array -- so we use `flatten(1)` to concatenate the arrays as a single multidimensional array.
+
+## Which Cells Need to be Changed?
+
+Once we have a list of live cells and their neighbors, the next step is to calculate the "score" for each cell. For each live cell, we will add 1 point to the score of each of it's neighbors; we will then use that score to determine which cells stay die, come to live, or stay the same.
+
+First, we'll add tests to `grid_spec.rb` to test the `#cell_scores` method. The method will produce a hash with the coordinates as keys and the coordinate's score as a value. We'll test a few 
+
+```
+before(:each) do
+  @coord1 = [0,0]
+  @coord2 = [1,1]
+  @grid = GameOfLife::Grid.new(coordinates: [@coord1, @coord2])
+end
+
+...
+
+describe "#cell_scores" do
+
+  it "should produce a score of 1 for the coordinate [2,1]" do
+    expect(@grid.cell_scores([2,1])).to eq 1
+  end
+
+  it "should produce a score of 1 for the coordinate [1,1]" do
+    expect(@grid.cell_scores([1,1])).to eq 1
+  end
+
+  it "should produce a score of 2 for the coordinate [1,0]" do
+    expect(@grid.cell_scores([1,0])).to eq 2
+  end
+
+  it "should produce a score of 4 for the middle of a 3x3 circle" do
+    pattern = %q(-X-
+                 X-X
+                 -X-).gsub(/[^\S\n]/m, '')
+    grid = Grid.new(pattern: pattern)
+    expect(grid.cell_scores([1,1])).to eq 4
+  end
+
+end
+```
+
+#### WIP: Explaining `#cell_scores`
 
 ## Final Touches: Drawing the Grid
 

@@ -45,16 +45,68 @@ module GameOfLife
         end
       end
 
-      describe "#find_living_coordinates" do
-        it "should find living coordinates" do
-          expect(@grid.find_living_coordinates).to eq [@coord1, @coord2]
+      describe "#live_cells" do
+
+        before(:each) do
+          @cell1 = @grid.cells.first
+          @cell2 = @grid.cells[1]
         end
 
-        it "should not find dead coordinates" do
-          @grid.cells[1].state = :dead
-          expect(@grid.find_living_coordinates).to eq [@coord1]
+        it "should find living cells" do
+          expect(@grid.live_cells).to eq [@cell1, @cell2]
+        end
+
+        it "should not find dead cells" do
+          @cell2.state = :dead
+          expect(@grid.live_cells).to eq [@cell1]
+        end
+
+      end
+
+      describe "#live_cell_neighbors" do
+        it "should find the neighbors of live cells when 1 cell is live" do
+          grid = Grid.new(coordinates: [1,1])
+          neighbors = [[0,0], [0,1], [0,2],
+                       [1,0], [1,2],
+                       [2,0], [2,1], [2,2]]
+          expect(grid.live_cell_neighbors).to eq neighbors
+        end
+
+        it "should find the neighbors of live cells when 2 cells are live" do
+          neighbors = [[-1,-1],[-1,0],[-1,1],
+                       [0,-1],[0,1],
+                       [1,-1],[1,0],[1,1],
+                       [0,0], [0,1], [0,2],
+                       [1,0], [1,2],
+                       [2,0], [2,1], [2,2]]
+            expect(@grid.live_cell_neighbors). to eq neighbors
         end
       end
+
+      describe "#cell_scores" do
+
+        it "should produce a score of 1 for the coordinate [2,1]" do
+          expect(@grid.cell_scores([2,1])).to eq 1
+        end
+
+        it "should produce a score of 1 for the coordinate [1,1]" do
+          expect(@grid.cell_scores([1,1])).to eq 1
+        end
+
+        it "should produce a score of 2 for the coordinate [1,0]" do
+          expect(@grid.cell_scores([1,0])).to eq 2
+        end
+
+        it "should produce a score of 4 for the middle of a 3x3 circle" do
+          pattern = %q(-X-
+                       X-X
+                       -X-).gsub(/[^\S\n]/m, '')
+          grid = Grid.new(pattern: pattern)
+          expect(grid.cell_scores([1,1])).to eq 4
+        end
+
+      end
+
     end
 
     context "Grid can be initialized using a pattern" do

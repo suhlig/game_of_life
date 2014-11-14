@@ -30,8 +30,20 @@ class Grid
       build_cells_from_coordinates(coordinates)
     end
 
-    def find_living_coordinates
-      cells.find_all { |cell| cell.alive? }.map(&:position)
+    def live_cells
+      @live_cells ||= cells.find_all { |cell| cell.alive? }
+    end
+
+    def live_cell_neighbors
+      @live_cell_neighbors ||= live_cells.map(&:neighbor_coordinates).flatten(1)
+    end
+
+    def cell_scores(coordinates)
+      @cell_scores = live_cell_neighbors.reduce({}) do |score_hash, coords|
+        score_hash[coords] = live_cell_neighbors.count(coords)
+        score_hash
+      end
+      @cell_scores[coordinates]
     end
   end
 
