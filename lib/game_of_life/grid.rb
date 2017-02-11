@@ -1,6 +1,6 @@
+# frozen_string_literal: true
 module GameOfLife
-
-class Grid
+  class Grid
     attr_accessor :cells
 
     def initialize(pattern: nil, coordinates: nil)
@@ -31,7 +31,7 @@ class Grid
     end
 
     def live_cells
-      @live_cells ||= cells.find_all { |cell| cell.alive? }
+      @live_cells ||= cells.find_all(&:alive?)
     end
 
     def live_cell_neighbors
@@ -39,12 +39,10 @@ class Grid
     end
 
     def cell_scores(coordinates)
-      @cell_scores = live_cell_neighbors.reduce({}) do |score_hash, coords|
+      @cell_scores = live_cell_neighbors.each_with_object({}) do |coords, score_hash|
         score_hash[coords] = live_cell_neighbors.count(coords)
-        score_hash
       end
       @cell_scores[coordinates]
     end
   end
-
 end

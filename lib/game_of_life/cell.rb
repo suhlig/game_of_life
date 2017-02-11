@@ -1,5 +1,5 @@
+# frozen_string_literal: true
 module GameOfLife
-
   class Cell
     attr_accessor :position, :state, :neighbor_coordinates
 
@@ -23,9 +23,7 @@ module GameOfLife
 
     def offset
       offset_range = (-1..1).to_a
-      offset_range.product(offset_range).delete_if { |pair| pair == [0,0] }
+      offset_range.product(offset_range).delete_if { |pair| pair == [0, 0] }
     end
-
   end
-
 end
