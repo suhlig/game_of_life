@@ -15,8 +15,30 @@ module GameOfLife
                         ----X----'.gsub(/[^\S\n]/m, '')
     end
 
+    context 'Grid is default-initialized' do
+      subject(:grid) { GameOfLife::Grid.new(cells) }
+
+      describe 'initialize with nil' do
+        let(:cells) { nil }
+
+        it 'should have an empty grid' do
+          expect(grid).to be
+          expect(grid.cells).to be
+        end
+      end
+
+      describe 'initialize with an empty array' do
+        let(:cells) { [] }
+
+        it 'should have an empty grid' do
+          expect(grid).to be
+          expect(grid.cells).to be
+        end
+      end
+    end
+
     context 'Grid is initialized with a single cell' do
-      subject(:grid) { GameOfLife::Grid.new(coordinates: live_coordinates) }
+      subject(:grid) { GameOfLife::Grid.from_coordinates(live_coordinates) }
       let(:live_coordinates) { [0, 0] }
 
       describe '#initialize' do
@@ -27,7 +49,7 @@ module GameOfLife
     end
 
     context 'Grid is initialized with two cells' do
-      subject(:grid) { GameOfLife::Grid.new(coordinates: [coord1, coord2]) }
+      subject(:grid) { GameOfLife::Grid.from_coordinates([coord1, coord2]) }
       let(:coord1) { [0, 0] }
       let(:coord2) { [1, 1] }
 
@@ -57,7 +79,7 @@ module GameOfLife
 
       describe '#live_cell_neighbors' do
         it 'should find the neighbors of live cells when 1 cell is live' do
-          grid = Grid.new(coordinates: [1, 1])
+          grid = Grid.from_coordinates([1, 1])
 
           neighbors = [[0, 0], [0, 1], [0, 2],
                        [1, 0],         [1, 2],
@@ -98,7 +120,7 @@ module GameOfLife
     end
 
     context 'Grid can be initialized using a pattern' do
-      subject(:grid) { GameOfLife::Grid.new(pattern: cross_pattern) }
+      subject(:grid) { GameOfLife::Grid.from_pattern(cross_pattern) }
 
       context 'context' do
         let(:cross_pattern) {
