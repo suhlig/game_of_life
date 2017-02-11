@@ -11,7 +11,6 @@ Gem::Specification.new do |spec|
   spec.email         = ['robcole@gmail.com']
   spec.summary       = 'Game of Life as a Ruby Gem'
   spec.description   = 'TDD Practice: Game of Life Ruby Gem'
-  spec.homepage      = ''
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split("\x0")
