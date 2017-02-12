@@ -3,17 +3,18 @@ require 'spec_helper'
 
 module GameOfLife
   describe Cell do
-    subject(:cell) { Cell.new([1, 1]) }
+    subject(:cell) { Cell.new(position) }
+    let(:position) { [1, 1] }
 
-    it 'should respond with a position of 1,1' do
+    it 'should reveal its position' do
       expect(cell.position).to eq([1, 1])
     end
 
-    it 'should be alive as a default' do
+    it 'should be in live state as a default' do
       expect(cell.state).to eq(:live)
     end
 
-    it 'should respond as alive when it is alive' do
+    it 'should respond to alive when it is alive' do
       expect(cell.alive?).to be_truthy
     end
 
