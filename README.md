@@ -1,6 +1,23 @@
 # Game of Life in Ruby
 
-(from [robcole/game_of_life](https://github.com/robcole/game_of_life))
+This is a modified clone of Rob Cole's [robcole/game_of_life](https://github.com/robcole/game_of_life)) implementation.
+
+## Getting Started
+
+* Make sure you have a recent (~2.x) Ruby
+* Clone the repo
+* Change into the directory and install the dependencies:
+
+  ```bash
+  gem install bundler
+  bundle install
+  ```
+
+* Start the test loop with `bundle exec guard`
+
+# Design Notes
+
+The following are extracts from Rob Cole's documentation.
 
 ## The Rules
 
@@ -11,9 +28,9 @@
 
 > ... here are the steps our program will be walking through:
 
-1. The grid finds all live coordinates.
-2. The grid adds 1 point to the score of each of the coordinates surrounding a live coordinate.
-3. The grid creates a new living cell for all new living cells, and kills all cells which should be killed.
+> 1. The grid finds all live coordinates.
+> 2. The grid adds 1 point to the score of each of the coordinates surrounding a live coordinate.
+> 3. The grid creates a new living cell for all new living cells, and kills all cells which should be killed.
 
 ## Implementation Notes
 
